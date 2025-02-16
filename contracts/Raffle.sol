@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@chainlink/contracts/src/v0.8/vrf/interfaces/VRFCoordinatorV2Interface.sol";
-import "@chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
-import "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
+import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
+import {IVRFCoordinatorV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/interfaces/IVRFCoordinatorV2Plus.sol";
+import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
+import {AutomationCompatibleInterface} from
+    "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
 
 error Raffle__NotEnougthETHEntered();
 error Raffle__TransferFailed();
@@ -18,14 +20,17 @@ error Raffle__UpkeepNotNeeded(uint256 currentBalance, uint256 numPlayers, uint25
  */
 
 /* Functions */
-contract Raffle is VRFConsumerBaseV2 , AutomationCompatibleInterface {
+contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     /* type declarations */
-    enum RaffleState { Open, Calculating }
+    enum RaffleState {
+        Open,
+        Calculating
+    }
 
     /* State Variables */
     uint256 private immutable i_entranceFee;
     address payable[] private s_players;
-    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
+    // VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
     bytes32 private immutable i_keyHash;
     uint256 private immutable i_subsciptionID;
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
@@ -43,9 +48,16 @@ contract Raffle is VRFConsumerBaseV2 , AutomationCompatibleInterface {
     event RequestedRaffleWinner(uint256 indexed requestId);
     event RaffleWinner(address indexed winner);
 
-    constructor(address vrfCoordinator, uint256 entranceFee, bytes32 keyHash, uint256 subscriptionId, uint32 callBackGasLimit, uint256 interval) VRFConsumerBaseV2(vrfCoordinator) {
+    constructor(
+        address vrfCoordinator,
+        uint256 entranceFee,
+        bytes32 keyHash,
+        uint256 subscriptionId,
+        uint32 callBackGasLimit,
+        uint256 interval
+    ) VRFConsumerBaseV2Plus(vrfCoordinator) {
         i_entranceFee = entranceFee;
-        i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinator);
+        // i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinator);
         i_keyHash = keyHash;
         i_subsciptionID = subscriptionId;
         i_callBackGasLimit = callBackGasLimit;
@@ -53,18 +65,19 @@ contract Raffle is VRFConsumerBaseV2 , AutomationCompatibleInterface {
         s_lastTimeStamp = block.timestamp;
         i_interval = interval;
     }
+
     function enterRaffle() public payable {
         if (msg.value < i_entranceFee) {
             revert Raffle__NotEnougthETHEntered();
         }
-        if(s_raffleState != RaffleState.Open) {
+        if (s_raffleState != RaffleState.Open) {
             revert Raffle__NotOpen();
         }
         s_players.push(payable(msg.sender));
         emit RaffleEnter(msg.sender);
     }
 
-     /**
+    /**
      * @dev This is the function that the Chainlink Keeper nodes call
      * they look for `upkeepNeeded` to return True.
      * the following should be true for this to return true:
@@ -73,13 +86,11 @@ contract Raffle is VRFConsumerBaseV2 , AutomationCompatibleInterface {
      * 3. The contract has ETH.
      * 4. Implicity, your subscription is funded with LINK.
      */
-    function checkUpkeep(
-        bytes memory /* checkData */
-    )
+    function checkUpkeep(bytes memory /* checkData */ )
         public
         view
         override
-        returns (bool upkeepNeeded, bytes memory /* performData */)
+        returns (bool upkeepNeeded, bytes memory /* performData */ )
     {
         bool isOpen = (s_raffleState == RaffleState.Open);
         bool timePassed = (block.timestamp - s_lastTimeStamp) > i_interval;
@@ -89,64 +100,76 @@ contract Raffle is VRFConsumerBaseV2 , AutomationCompatibleInterface {
         return (upkeepNeeded, "");
     }
 
-    function performUpkeep(bytes calldata /* performData */) external override {
-        (bool upKeepNeeded, ) = checkUpkeep("0x");
+    function performUpkeep(bytes calldata /* performData */ ) external override {
+        (bool upKeepNeeded,) = checkUpkeep("");
         if (!upKeepNeeded) {
             revert Raffle__UpkeepNotNeeded(address(this).balance, s_players.length, uint256(s_raffleState));
         }
         s_raffleState = RaffleState.Calculating;
-        uint256 requestId = i_vrfCoordinator.requestRandomWords(
-            i_keyHash,
-            uint64(i_subsciptionID),
-            REQUEST_CONFIRMATIONS,
-            i_callBackGasLimit,
-            NUM_WORDS
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: i_keyHash, //gasLane
+                subId: i_subsciptionID, //Subscription ID that we need for funding requests (here it is to request a random number)
+                requestConfirmations: REQUEST_CONFIRMATIONS, //It says how many confirmations the chainlink node should wait before responding
+                callbackGasLimit: i_callBackGasLimit, //The limit for how much gas to use for the callback request to our contract's fulfillRandomWords() function.
+                numWords: NUM_WORDS, // number of random words we need
+                extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: false}))
+            })
         );
         emit RequestedRaffleWinner(requestId);
     }
 
-    function fulfillRandomWords(uint256 /* requestId */, uint256[] memory randomWords) internal override {
+    function fulfillRandomWords(uint256, /* requestId */ uint256[] calldata randomWords) internal override {
         uint256 indexOfWinner = randomWords[0] % s_players.length;
         address payable recentWinner = s_players[indexOfWinner];
         s_recentWinner = recentWinner;
         s_raffleState = RaffleState.Open;
         s_players = new address payable[](0);
         s_lastTimeStamp = block.timestamp;
-        (bool success, ) = recentWinner.call{value: address(this).balance}("");
+        (bool success,) = recentWinner.call{value: address(this).balance}("");
         if (!success) {
             revert Raffle__TransferFailed();
         }
         emit RaffleWinner(recentWinner);
     }
 
-    function getEntranceFee() public view returns(uint256) {
+    function getEntranceFee() public view returns (uint256) {
         return i_entranceFee;
     }
-    function getPlayer(uint256 index) public view returns(address) {
+
+    function getPlayer(uint256 index) public view returns (address) {
         return s_players[index];
     }
-    function getRecentWinner() public view returns(address) {
+
+    function getRecentWinner() public view returns (address) {
         return s_recentWinner;
     }
-    function getRaffleState() public view returns(RaffleState) {
+
+    function getRaffleState() public view returns (RaffleState) {
         return s_raffleState;
     }
-    function getNumWords() public pure returns(uint32) {
+
+    function getNumWords() public pure returns (uint32) {
         return NUM_WORDS;
     }
-    function getNumOfPlayers() public view returns(uint256) {
+
+    function getNumOfPlayers() public view returns (uint256) {
         return s_players.length;
     }
-    function getLatestTimeStamp() public view returns(uint256) {
+
+    function getLatestTimeStamp() public view returns (uint256) {
         return s_lastTimeStamp;
     }
-    function getRequestConfirmations() public pure returns(uint16) {
+
+    function getRequestConfirmations() public pure returns (uint16) {
         return REQUEST_CONFIRMATIONS;
     }
-    function getInterval() public view returns(uint256) {
+
+    function getInterval() public view returns (uint256) {
         return i_interval;
     }
-    function getSubscriptionId() public view returns(uint256) {
+
+    function getSubscriptionId() public view returns (uint256) {
         return i_subsciptionID;
     }
 }

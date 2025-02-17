@@ -145,6 +145,6 @@ yarn lint:fix
 
 # Thank you!
 
-If you appreciated this, feel free to follow me or donate!
+If you appreciated this, feel free to donate me!
 
-ETH Address: 0x9BeAE2201F6Ca299864a2CF3Eeed043156DF96c1
+Personal ETH Address: 0x9BeAE2201F6Ca299864a2CF3Eeed043156DF96c1

@@ -4,9 +4,6 @@ const {
   networkConfig,
 } = require("../../helper-hardhat-config");
 const { assert, expect } = require("chai");
-// const {
-//   increaseTo,
-// } = require("@nomicfoundation/hardhat-network-helpers/dist/src/helpers/time");
 developmentChains.includes(network.name)
   ? describe.skip
   : describe("Raffle unit tests", function () {
@@ -26,7 +23,7 @@ developmentChains.includes(network.name)
       });
 
       describe("fulfillRandomWords", function () {
-        it("words with live Chainlink Keepers and chainlink VRF, we get a random number", async function () {
+        it("works with live Chainlink Keepers and chainlink VRF, we get a random number", async function () {
           const startingTimeStamp = await raffle.getLatestTimeStamp();
           const accounts = await ethers.getSigners();
 
@@ -40,12 +37,12 @@ developmentChains.includes(network.name)
                 const winnerEndingBalance =
                   await accounts[0].provider.getBalance(recentWinner);
                 const endingTimeStamp = await raffle.getLatestTimeStamp();
-                await expect(getPlayer(0)).to.be.reverted;
+                await expect(raffle.getPlayer(0)).to.be.reverted;
                 assert.equal(recentWinner.toString(), accounts[0].address);
                 assert.equal(raffleState, 0);
                 assert.equal(
                   winnerEndingBalance.toString(),
-                  winnerStartingBalance.add(raffleEntranceFee).toString()
+                  (winnerStartingBalance - gasCost).toString()
                 );
                 assert(endingTimeStamp > startingTimeStamp);
 
@@ -55,17 +52,15 @@ developmentChains.includes(network.name)
                 reject(e);
               }
             });
-
-            await raffle.enterRaffle({ value: raffleEntranceFee });
             const winnerStartingBalance = await accounts[0].provider.getBalance(
               accounts[0].address
             );
-            console.log(
-              "winnerStartingBalance",
-              winnerStartingBalance.toString()
-            );
-            const upKeepNeeded = (await raffle.checkUpkeep("0x")).upkeepNeeded;
-            console.log("upKeepNeeded", upKeepNeeded.toString());
+            const tx = await raffle.enterRaffle({ value: raffleEntranceFee });
+            const transactionReceipt = await tx.wait(1);
+            const { gasUsed, gasPrice } = transactionReceipt;
+            const gasCost = BigInt(gasUsed) * BigInt(gasPrice);
+            // const upKeepNeeded = (await raffle.checkUpkeep("0x")).upkeepNeeded;
+            // console.log("upKeepNeeded", upKeepNeeded.toString());
           });
         });
       });

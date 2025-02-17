@@ -5,7 +5,7 @@ const {
 } = require("../helper-hardhat-config");
 const { verify } = require("../utils/verify");
 
-const VRF_SUB_FUND_AMOUNT = ethers.parseEther("1");
+const VRF_SUB_FUND_AMOUNT = ethers.parseEther("20");
 
 module.exports = async function ({ getNamedAccounts, deployments }) {
   const { deploy, log } = deployments;
@@ -19,9 +19,9 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
   if (developmentChains.includes(network.name)) {
     let signer = await ethers.getSigner(deployer);
     vrfCoordinatorV2Mock = await ethers.getContractAt(
-      "VRFCoordinatorV2Mock",
+      "VRFCoordinatorV2_5Mock",
       (
-        await deployments.get("VRFCoordinatorV2Mock")
+        await deployments.get("VRFCoordinatorV2_5Mock")
       ).address,
       signer
     );
@@ -29,6 +29,7 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
     const transactionResponse = await vrfCoordinatorV2Mock.createSubscription();
     const transactionReceipt = await transactionResponse.wait(1);
     subscriptionId = transactionReceipt.logs[0].args.subId;
+    console.log("subscriptionId", subscriptionId);
     await vrfCoordinatorV2Mock.fundSubscription(
       subscriptionId,
       VRF_SUB_FUND_AMOUNT

@@ -7,11 +7,16 @@ const { assert, expect } = require("chai");
 !developmentChains.includes(network.name)
   ? describe.skip
   : describe("Raffle unit tests", function () {
-      let raffle, vrfCoordinatorV2Mock, raffleEntranceFee, deployer, interval;
+      let raffle,
+        vrfCoordinatorV2Mock,
+        raffleEntranceFee,
+        deployer,
+        signer,
+        interval;
       const chainId = network.config.chainId;
       beforeEach(async () => {
         deployer = (await getNamedAccounts()).deployer;
-        const signer = await ethers.getSigner(deployer);
+        signer = await ethers.getSigner(deployer);
         await deployments.fixture(["all"]);
         raffle = await ethers.getContractAt(
           "Raffle",
@@ -21,18 +26,17 @@ const { assert, expect } = require("chai");
           signer
         );
         vrfCoordinatorV2Mock = await ethers.getContractAt(
-          "VRFCoordinatorV2Mock",
+          "VRFCoordinatorV2_5Mock",
           (
-            await deployments.get("VRFCoordinatorV2Mock")
+            await deployments.get("VRFCoordinatorV2_5Mock")
           ).address,
           signer
         );
 
         raffleEntranceFee = await raffle.getEntranceFee();
         interval = await raffle.getInterval();
-
         // ✅ Add the Raffle contract as a valid consumer to the VRF subscription
-        subscriptionId = await raffle.getSubscriptionId(); // Fetch subscription ID
+        subscriptionId = await raffle.getSubscriptionId(); // Fetch subscription ID from the Raffle contract
         await vrfCoordinatorV2Mock.addConsumer(subscriptionId, raffle.target);
       });
 
@@ -166,10 +170,16 @@ const { assert, expect } = require("chai");
         it("can only be called after performUpkeep", async function () {
           await expect(
             vrfCoordinatorV2Mock.fulfillRandomWords(0, raffle.target)
-          ).to.be.revertedWith("nonexistent request");
+          ).to.be.revertedWithCustomError(
+            vrfCoordinatorV2Mock,
+            "InvalidRequest"
+          );
           await expect(
             vrfCoordinatorV2Mock.fulfillRandomWords(1, raffle.target)
-          ).to.be.revertedWith("nonexistent request");
+          ).to.be.revertedWithCustomError(
+            vrfCoordinatorV2Mock,
+            "InvalidRequest"
+          );
         });
 
         it("picks a winner, resets the lottery and sends the money", async function () {
@@ -189,9 +199,10 @@ const { assert, expect } = require("chai");
           }
           const startingTimeStamp = await raffle.getLatestTimeStamp();
           let winnerStartingBalance;
+
           await new Promise(async (resolve, reject) => {
             raffle.once("RaffleWinner", async () => {
-              console.log("WinnerPicked event fired");
+              console.log("RaffleWinner event fired");
               try {
                 console.log("account 0: ", await accounts[0].address);
                 console.log("account 1: ", await accounts[1].address);
@@ -210,7 +221,7 @@ const { assert, expect } = require("chai");
                 assert(
                   winnerEndingBalance.toString(),
                   winnerStartingBalance +
-                    raffleEntranceFee * BigInt(additionalEntrances + 1) // ✅ Fixed multiplication
+                    raffleEntranceFee * BigInt(additionalEntrances + 1)
                 );
                 resolve();
               } catch (error) {

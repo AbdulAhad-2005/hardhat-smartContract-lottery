@@ -102,9 +102,7 @@ Go back to [vrf.chain.link](https://vrf.chain.link) and under your subscription 
 
 [You can follow the documentation if you get lost.](https://docs.chain.link/docs/chainlink-keepers/compatible-contracts/)
 
-Go to [keepers.chain.link](https://keepers.chain.link/new) and register a new upkeep. Choose `Custom logic` as your trigger mechanism for automation. Your UI will look something like this once completed:
-
-![Keepers](./img/keepers.png)
+Go to [keepers.chain.link](https://keepers.chain.link/new) and register a new upkeep. Choose `Custom logic` as your trigger mechanism for automation, then enter the contract address of your Raffle.sol deployed contract, write Upkeep name, fund Upkeep with some LINK, leave 'Check data (Hexadecimal)' empty and click register Upkeep.
 
 6. Enter your raffle!
 

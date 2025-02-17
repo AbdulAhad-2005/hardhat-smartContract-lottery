@@ -2,24 +2,18 @@
 
 *This repo has been updated to work with Sepolia testnet and hardhat local blockchain.
 
-- [Hardhat Smartcontract Lottery (Raffle) FCC](#hardhat-smartcontract-lottery-raffle-fcc)
+- [Hardhat Smartcontract Lottery (Raffle)](#hardhat-smartcontract-lottery-raffle)
 - [Getting Started](#getting-started)
   - [Requirements](#requirements)
   - [Quickstart](#quickstart)
-  - [Typescript](#typescript)
 - [Usage](#usage)
   - [Testing](#testing)
     - [Test Coverage](#test-coverage)
 - [Deployment to a testnet or mainnet](#deployment-to-a-testnet-or-mainnet)
     - [Estimate gas cost in USD](#estimate-gas-cost-in-usd)
   - [Verify on etherscan](#verify-on-etherscan)
-    - [Typescript differences](#typescript-differences)
 - [Linting](#linting)
 - [Thank you!](#thank-you)
-
-This project is apart of the Hardhat FreeCodeCamp video.
-
-Checkout the full blockchain course video [here.](https://www.youtube.com/watch?v=gyMwXuJrbJQ)
 
 # Getting Started
 
@@ -39,18 +33,9 @@ Checkout the full blockchain course video [here.](https://www.youtube.com/watch?
 ## Quickstart
 
 ```
-git clone https://github.com/PatrickAlphaC/hardhat-smartcontract-lottery-fcc
-cd hardhat-smartcontract-lottery-fcc
+git clone https://github.com/AbdulAhad-2005/hardhat-smartContract-lottery
+cd hardhat-smartContract-lottery
 yarn
-```
-
-## Typescript
-
-If you want to get to typescript and you cloned the javascript version, just run:
-
-```
-git checkout typescript
-yarn 
 ```
 
 # Usage
